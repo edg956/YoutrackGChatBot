@@ -9,10 +9,13 @@ This aims to make these actions transparent by allowing issues to be created in 
 Also, I just wanted to program something in Go, even though a small webserver :).
 
 ## TODO
-- Implement handlers for MESSAGE, ADDED, and REMOVED events
-- Implement commands to assign bot to project
-- Implement commands to list sprints of a project's board
-- Implement commands to assign a sprint as default to create issues, etc
-- Implement commands to manage issues (create, update, delete, assign)
-- Implement CI/CD
-- Ideas?
+- [] Implement handlers for MESSAGE, ADDED, and REMOVED events
+- [] Implement Card Message to configure settings for a project
+- [] Implement web form that takes in the settings from the card message
+- [] Add in database models for storing spaces' configuration
+- [] Implement commands to list sprints of a project's board
+- [] Implement commands to manage issues (create, update, delete, assign)
+- [] Implement functionality to update when a new sprint is created (including updating configuration)
+- [] Implement commands to assign a sprint as default to create issues, etc
+- [] Implement CI/CD
+- [] Ideas?
