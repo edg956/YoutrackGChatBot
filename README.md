@@ -9,6 +9,7 @@ This aims to make these actions transparent by allowing issues to be created in 
 Also, I just wanted to program something in Go, even though a small webserver :).
 
 ## TODO
+- [ ] Implement [verification](https://developers.google.com/chat/how-tos/bots-develop#verifying_bot_authenticity) of token ID from Google
 - [ ] Implement handlers for MESSAGE, ADDED, and REMOVED events
 - [ ] Implement Card Message to configure settings for a project
 - [ ] Implement web form that takes in the settings from the card message
