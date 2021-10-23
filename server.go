@@ -18,9 +18,11 @@ func main() {
 		return
 	}
 
-	http.HandleFunc("/", middlewares.ApplyMiddleware(handlers.Hello))
+	server := http.NewServeMux()
+
+	server.HandleFunc("/", middlewares.ApplyMiddleware(handlers.Hello))
 
 	listeningAddress := ":8080"
 	logger.Printf("Server listening on address: %s", listeningAddress)
-	http.ListenAndServe(listeningAddress, nil)
+	http.ListenAndServe(listeningAddress, server)
 }
