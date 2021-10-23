@@ -11,6 +11,7 @@ type Settings struct {
 	GCHAT_ISSUER           string
 	PUBLIC_CERT_URL_PREFIX string
 	GCHAT_AUDIENCE         string
+	DATABASE_PATH          string
 }
 
 func GetSettings() (Settings, error) {
@@ -38,11 +39,17 @@ func GetSettings() (Settings, error) {
 		gchatCertUrl = "https://www.googleapis.com/service_accounts/v1/metadata/x509/"
 	}
 
+	databasePath := os.Getenv("DATABASE_PATH")
+	if databasePath == "" {
+		databasePath = "/var/lib/youtrack-gchat-bot/data"
+	}
+
 	return Settings{
 		YOUTRACK_TOKEN:         youtrackToken,
 		GCHAT_AUDIENCE:         gchatAudience,
 		GCHAT_ISSUER:           gchatIssuer,
 		PUBLIC_CERT_URL_PREFIX: gchatCertUrl,
+		DATABASE_PATH:          databasePath,
 	}, nil
 
 }
