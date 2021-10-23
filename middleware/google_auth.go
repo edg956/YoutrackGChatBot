@@ -3,7 +3,10 @@ package middleware
 import (
 	"YoutrackGChatBot/logging"
 	"YoutrackGChatBot/settings"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
@@ -32,7 +35,9 @@ var VerifyGoogleAuth = func(f http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		if isValid, err := verifyToken(token, settings); isValid && err != nil {
+		keyFunc := GetKeyFunc(settings)
+
+		if isValid, err := VerifyToken(token, settings, keyFunc); isValid && err != nil {
 			// If google auth passes, execute handler
 			f(w, r)
 		} else {
@@ -49,9 +54,9 @@ func replyUnauthorized(w http.ResponseWriter) {
 	w.Write([]byte("<h1>Unauthorized access</h1>"))
 }
 
-func getAuthToken(req *http.Request) (*string, error) {
+func getAuthToken(req *http.Request) (string, error) {
 	var (
-		token *string
+		token string
 		err   error
 	)
 
@@ -60,7 +65,7 @@ func getAuthToken(req *http.Request) (*string, error) {
 			parts := strings.Split(val[0], " ")
 
 			if parts[0] == "Bearer" {
-				token = &parts[1]
+				token = parts[1]
 			} else {
 				err = errors.New("Invalid token type")
 			}
@@ -74,39 +79,65 @@ func getAuthToken(req *http.Request) (*string, error) {
 	return token, err
 }
 
-func verifyToken(token *string, s *settings.Settings) (bool, error) {
-	claims := make(jwt.MapClaims)
+func GetKeyFunc(s settings.Settings) func(token *jwt.Token) (interface{}, error) {
+	fn := func(token *jwt.Token) (interface{}, error) {
+		// Bring JWKS
+		resp, err := http.Get(fmt.Sprintf("%s%s", s.PUBLIC_CERT_URL_PREFIX, s.GCHAT_ISSUER))
+		if err != nil {
+			return false, errors.New("Could not retrieve public certificate")
+		}
 
-	// Bring JWKS
-	resp, err := http.Get(fmt.Sprintf("%s%s", s.PUBLIC_CERT_URL_PREFIX, s.GCHAT_ISSUER))
-	if err != nil {
-		return false, errors.New("Could not retrieve public certificate")
-	}
+		defer resp.Body.Close()
 
-	defer resp.Body.Close()
+		var jsonObj map[string]interface{}
 
-	var jsonObj map[string]interface{}
+		// Decode JSON response
+		err = json.NewDecoder(resp.Body).Decode(&jsonObj)
 
-	// Decode JSON response
-	err = json.NewDecoder(resp.Body).Decode(&jsonObj)
+		if err != nil {
+			return false, errors.New("Could not parse JSON response")
+		}
 
-	if err != nil {
-		return false, errors.New("Could not parse JSON response")
-	}
-
-	// jsonObj contains JSON response in a map
-	decodedToken, err := jwt.ParseWithClaims(*token, claims, func(token *jwt.Token) (interface{}, error) {
 		if kid, ok := token.Header["kid"].(string); ok {
 			if key, ok := jsonObj[kid].(string); ok {
-				return []byte(key), nil
+				return ExtractPubFromX509([]byte(key))
 			}
 		}
+
 		return nil, errors.New("No valid signing key")
-	})
+	}
+
+	return fn
+}
+
+func ExtractPubFromX509(certBytes []byte) (interface{}, error) {
+	pemBlock, _ := pem.Decode(certBytes)
+
+	if pemBlock == nil {
+		return nil, errors.New("No PEM data found")
+	}
+
+	cert, err := x509.ParseCertificate(pemBlock.Bytes)
+
+	if err != nil {
+		return rsa.PublicKey{}, err
+	}
+
+	return cert.PublicKey, nil
+}
+
+func VerifyToken(tokenString string, s settings.Settings, getKeyFunc func(token *jwt.Token) (interface{}, error)) (bool, error) {
+	claims := make(jwt.MapClaims)
+
+	// jsonObj contains JSON response in a map
+	decodedToken, err := jwt.ParseWithClaims(tokenString, claims, getKeyFunc)
 
 	if err != nil {
 		return false, err
 	}
 
-	return decodedToken.Valid, nil
+	// Check matching settings like audience
+	valid := claims["aud"] == s.GCHAT_AUDIENCE
+
+	return decodedToken.Valid && valid, nil
 }

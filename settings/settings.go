@@ -19,7 +19,7 @@ var (
 	once      sync.Once
 )
 
-func GetSettings() (*Settings, error) {
+func GetSettings() (Settings, error) {
 	// We run this once to make sure there are no race conditions
 	once.Do(func() {
 		logger := logging.GetLogger()
@@ -31,10 +31,10 @@ func GetSettings() (*Settings, error) {
 	})
 
 	if singleton == (Settings{}) {
-		return (&Settings{}), errors.New("Could not load Settings from environment.")
+		return (Settings{}), errors.New("Could not load Settings from environment.")
 	}
 
-	return &singleton, nil
+	return singleton, nil
 }
 
 func settingsFromEnvironment() error {
